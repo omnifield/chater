@@ -8,6 +8,14 @@ const backend = process.env.CHATER_BACKEND ?? 'http://localhost:8020';
 export default defineConfig({
   plugins: [solid()],
   server: {
+    // The dev server is viewed through the VS Code port-forward, whose Host is a
+    // rotating `*.devtunnels.ms` subdomain — vite's DNS-rebinding host check
+    // (403 "This host is not allowed") otherwise blocks both static assets and
+    // the /chater proxy. This is a LOCAL DEV server only (production traffic is
+    // fronted by the gateway, never this), and the tunnel domain isn't fixed, so
+    // allow any host rather than pinning one. Revisit if this is ever exposed
+    // beyond dev.
+    allowedHosts: true,
     proxy: {
       '/chater': {
         target: backend,
