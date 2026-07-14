@@ -24,6 +24,20 @@ describe('ApiClient HTTP', () => {
     expect(headers?.Authorization).toBe('Bearer alice');
   });
 
+  it('sends an ASCII-safe Authorization header for a non-ASCII handle', async () => {
+    const fetchImpl = vi.fn(async (_input: string, _init?: RequestInit) =>
+      jsonResponse({ rooms: [] }),
+    );
+    const api = new ApiClient({ getToken: () => 'егор', fetchImpl });
+
+    // Would throw before this resolves if the header were the raw Cyrillic value.
+    await api.listRooms();
+
+    const headers = fetchImpl.mock.calls[0]?.[1]?.headers as Record<string, string> | undefined;
+    // Exact percent-encoded value — inherently ASCII, a valid header value.
+    expect(headers?.Authorization).toBe('Bearer %D0%B5%D0%B3%D0%BE%D1%80');
+  });
+
   it('createRoom posts type and title', async () => {
     const fetchImpl = vi.fn(async (_input: string, _init?: RequestInit) =>
       jsonResponse({ id: 5, type: 'group', title: null, created_at: 'x' }, 201),
