@@ -1,0 +1,28 @@
+# Repo-agnostic base — will be superseded by the devopser skeleton.
+
+# OS / editor
+.DS_Store
+*.swp
+
+# --- Go block ---
+# Binaries
+/chater
+/bin/
+*.exe
+*.test
+*.out
+
+# Coverage
+coverage.out
+coverage.txt
+
+# Local env / dev database (SQLite lands in a later step)
+*.local
+*.env
+*.db
+*.sqlite
+*.sqlite3
+
+# Go workspace file (never commit)
+go.work
+go.work.sum
