@@ -48,3 +48,16 @@ func toMessage(m store.Message) messageResponse {
 		CreatedAt: m.CreatedAt,
 	}
 }
+
+// wsEvent is the websocket frame envelope. The `type` discriminator leaves room
+// for future event kinds (typing, presence, …); v0 emits only "message". The
+// payload reuses the HTTP message DTO so there is a single wire shape.
+type wsEvent struct {
+	Type    string           `json:"type"`
+	Message *messageResponse `json:"message,omitempty"`
+}
+
+func messageEvent(m store.Message) wsEvent {
+	dto := toMessage(m)
+	return wsEvent{Type: "message", Message: &dto}
+}
