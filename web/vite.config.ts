@@ -30,9 +30,11 @@ export default defineConfig({
         configure: (proxy) => {
           proxy.on('proxyReqWs', (proxyReq, req) => {
             const url = new URL(req.url ?? '', 'http://localhost');
-            const token = url.searchParams.get('token');
+            const token = url.searchParams.get('token'); // URLSearchParams decodes it
             if (token) {
-              proxyReq.setHeader('authorization', `Bearer ${token}`);
+              // Re-encode: header values must be ASCII (a Cyrillic handle would
+              // throw here too). The backend percent-decodes it back.
+              proxyReq.setHeader('authorization', `Bearer ${encodeURIComponent(token)}`);
             }
           });
         },

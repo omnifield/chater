@@ -66,7 +66,11 @@ export class ApiClient implements ChatApi {
     const headers: Record<string, string> = {};
     const token = this.getToken();
     if (token) {
-      headers.Authorization = `Bearer ${token}`;
+      // Percent-encode the handle: HTTP header values must be ISO-8859-1, so a
+      // raw non-ASCII handle (e.g. Cyrillic) would make fetch throw before it
+      // ever hits the network. ASCII handles encode to themselves. The backend
+      // decodes this back to the handle.
+      headers.Authorization = `Bearer ${encodeURIComponent(token)}`;
     }
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
@@ -80,7 +84,16 @@ export class ApiClient implements ChatApi {
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch (cause) {
-      throw new ApiError(0, `network error: ${(cause as Error).message}`);
+      // Surface the real reason: a thrown fetch (bad URL, invalid header value,
+      // CSP, connection refused) produces no Network entry, so this log is the
+      // only trace. The UI still shows a friendly "cannot reach" message.
+      const detail = (cause as Error).message;
+      console.error(`chater API: request failed before/without response`, {
+        method,
+        url: this.baseUrl + path,
+        error: detail,
+      });
+      throw new ApiError(0, `network error: ${detail}`);
     }
 
     if (!res.ok) {
