@@ -34,14 +34,21 @@ type Store interface {
 type Server struct {
 	store  Store
 	logger *slog.Logger
+	hub    *hub
 }
 
 // NewRouter builds the chater HTTP handler over the given store.
 func NewRouter(logger *slog.Logger, st Store) http.Handler {
-	s := &Server{store: st, logger: logger}
+	return newServer(logger, st).routes()
+}
 
+func newServer(logger *slog.Logger, st Store) *Server {
+	return &Server{store: st, logger: logger, hub: newHub()}
+}
+
+func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET "+Prefix+"healthz", healthz(logger))
+	mux.HandleFunc("GET "+Prefix+"healthz", healthz(s.logger))
 
 	// Bootstrap: create a user (unauthenticated).
 	mux.HandleFunc("POST "+Prefix+"users", s.createUser)
@@ -52,6 +59,7 @@ func NewRouter(logger *slog.Logger, st Store) http.Handler {
 	mux.HandleFunc("POST "+Prefix+"rooms/{id}/participants", s.withUser(s.addParticipant))
 	mux.HandleFunc("POST "+Prefix+"rooms/{id}/messages", s.withUser(s.postMessage))
 	mux.HandleFunc("GET "+Prefix+"rooms/{id}/messages", s.withUser(s.getMessages))
+	mux.HandleFunc("GET "+Prefix+"rooms/{id}/ws", s.withUser(s.roomWS))
 
 	return mux
 }

@@ -7,6 +7,7 @@ go 1.26.0
 toolchain go1.26.5
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/pressly/goose/v3 v3.27.2
 	modernc.org/sqlite v1.53.0
 )

@@ -28,10 +28,34 @@ routes are under `/chater/`.
 | `POST /rooms/{id}/participants` | add `{user_id, role?}` → 204 | Bearer, participant |
 | `POST /rooms/{id}/messages` | send `{body}`; author = caller | Bearer, **participant (else 403)** |
 | `GET /rooms/{id}/messages?limit=&cursor=` | history `{messages, next_cursor}` | Bearer, participant |
+| `GET /rooms/{id}/ws` | live room events (websocket) | Bearer, participant |
 
 History pagination returns an **opaque cursor** (base64url of `created_at\x00id`);
 callers pass `next_cursor` back to fetch the next (older) page. `next_cursor` is
 null on the last page.
+
+### Live delivery (websocket)
+
+`GET /rooms/{id}/ws` upgrades a participant's connection (`coder/websocket`) to a
+**receive-only** stream — sending stays on `POST .../messages`, which also
+publishes. The membership gate runs *before* the upgrade (non-participant → 403).
+
+Frames are a JSON envelope with room for future event kinds; v0 emits only
+`message`, reusing the HTTP message DTO (one wire shape):
+
+```json
+{ "type": "message", "message": { …toMessage… } }
+```
+
+Fan-out is an in-process `hub` (`room_id → subscribers`, mutex-guarded). `POST`
+marshals the event once and publishes **non-blockingly**: a slow/full subscriber
+drops frames rather than stalling the broadcast or the HTTP request. Subscribe on
+connect, unsubscribe on disconnect/ctx-cancel; the channel is never closed, so
+publish stays race-free. Keepalive via periodic server ping.
+
+Known limitation: WS auth reuses the `Bearer` header, which browsers can't set on
+a WebSocket — fine for agents/Postman; a browser path (subprotocol/query token)
+comes with real identity. Single-instance only; multi-instance pub/sub is later.
 
 ### Identity — token-stub (v0)
 
@@ -58,8 +82,9 @@ offset — stable under concurrent inserts.
 cmd/chater/     wiring only: config → open DB → migrate → serve. No logic.
 internal/
   config/       env-only configuration (12-factor)
-  httpapi/      transport: net/http (stdlib), native /chater/ prefix. Thin handlers,
-                token-stub auth, wire DTOs (no DB types leak into JSON).
+  httpapi/      transport: net/http (stdlib) + coder/websocket, native /chater/
+                prefix. Thin handlers, token-stub auth, wire DTOs, in-process
+                pub/sub hub for live delivery.
   store/        data access — sqlc-generated types/queries + a thin wrapper.
                 Constraint violations surface as ErrNotFound/ErrConflict/
                 ErrInvalidReference so handlers map clean 404/409/400.
@@ -81,9 +106,9 @@ migrations/     goose SQL migrations (embedded; applied on startup).
 
 ## Non-goals (v0)
 
-Real auth/identity providers · attachments · reactions · search · threads. These are
-the Telegram-parity horizon, explicitly out of v0. Live message delivery over
-**websocket lands in Step 4** (history is HTTP-only for now).
+Real auth/identity providers · attachments · reactions · search · threads ·
+presence/typing · WS-send (v0 websocket is receive-only) · multi-instance pub/sub.
+These are the Telegram-parity / scale horizon, explicitly out of v0.
 
 ## Build / CI
 

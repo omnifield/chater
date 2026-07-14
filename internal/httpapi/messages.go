@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -45,6 +46,16 @@ func (s *Server) postMessage(w http.ResponseWriter, r *http.Request, caller stor
 		writeError(w, s.logger, http.StatusInternalServerError, "could not send message")
 		return
 	}
+
+	// Fan the persisted message out to live websocket subscribers. This must not
+	// block or fail the HTTP path: marshal once, publish non-blockingly (the hub
+	// drops frames for slow subscribers).
+	if payload, merr := json.Marshal(messageEvent(msg)); merr != nil {
+		s.logger.ErrorContext(r.Context(), "marshal ws event", "err", merr)
+	} else {
+		s.hub.publish(roomID, payload)
+	}
+
 	writeJSON(w, s.logger, http.StatusCreated, toMessage(msg))
 }
 
