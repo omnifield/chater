@@ -74,6 +74,33 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getRoom = `-- name: GetRoom :one
+SELECT id, type, title, created_at FROM rooms WHERE id = ?
+`
+
+func (q *Queries) GetRoom(ctx context.Context, id int64) (Room, error) {
+	row := q.db.QueryRowContext(ctx, getRoom, id)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.Type,
+		&i.Title,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserByHandle = `-- name: GetUserByHandle :one
+SELECT id, handle, created_at FROM users WHERE handle = ?
+`
+
+func (q *Queries) GetUserByHandle(ctx context.Context, handle string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByHandle, handle)
+	var i User
+	err := row.Scan(&i.ID, &i.Handle, &i.CreatedAt)
+	return i, err
+}
+
 const insertMessage = `-- name: InsertMessage :one
 INSERT INTO messages (room_id, author_id, body, created_at)
 VALUES (?, ?, ?, ?)
@@ -199,4 +226,22 @@ func (q *Queries) ListRoomsForUser(ctx context.Context, userID int64) ([]Room, e
 		return nil, err
 	}
 	return items, nil
+}
+
+const roomParticipantExists = `-- name: RoomParticipantExists :one
+SELECT EXISTS(
+    SELECT 1 FROM room_participants WHERE room_id = ? AND user_id = ?
+) AS present
+`
+
+type RoomParticipantExistsParams struct {
+	RoomID int64
+	UserID int64
+}
+
+func (q *Queries) RoomParticipantExists(ctx context.Context, arg RoomParticipantExistsParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, roomParticipantExists, arg.RoomID, arg.UserID)
+	var present bool
+	err := row.Scan(&present)
+	return present, err
 }

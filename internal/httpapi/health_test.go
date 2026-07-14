@@ -1,20 +1,14 @@
 package httpapi
 
 import (
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
-func newTestRouter() http.Handler {
-	return NewRouter(slog.New(slog.NewTextHandler(io.Discard, nil)))
-}
-
 func TestHealthzRouting(t *testing.T) {
-	router := newTestRouter()
+	router := newTestRouter(t)
 
 	tests := []struct {
 		name       string
@@ -43,7 +37,7 @@ func TestHealthzRouting(t *testing.T) {
 }
 
 func TestHealthzResponse(t *testing.T) {
-	router := newTestRouter()
+	router := newTestRouter(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/chater/healthz", nil)
 	rec := httptest.NewRecorder()

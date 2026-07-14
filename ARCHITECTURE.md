@@ -12,8 +12,33 @@ brainer product built on top of chater's *public* API — not our concern. Ecosy
 identity/auth is a separate future product; v0 uses a token-stub.
 
 Public contract: HTTP + websocket under the native prefix `/chater/` (the gateway
-proxies `/api/chater/` → `:PORT/chater/`). The listen port is env-only (`CHATER_PORT`);
-no deployment port is hardcoded.
+proxies `/api/chater/` → `:PORT/chater/`). The listen port is env-only (`CHATER_PORT`)
+and the SQLite path is env-only (`CHATER_DB`); no deployment values are hardcoded.
+
+## HTTP API (v0)
+
+JSON over stdlib `net/http` (method+path routing with `{id}`, no framework). All
+routes are under `/chater/`.
+
+| Method + path | Purpose | Auth |
+|---|---|---|
+| `POST /users` | bootstrap a user `{handle}` | none |
+| `POST /rooms` | create room `{type, title?, participant_ids?}`; caller becomes owner | Bearer |
+| `GET /rooms` | caller's rooms | Bearer |
+| `POST /rooms/{id}/participants` | add `{user_id, role?}` → 204 | Bearer, participant |
+| `POST /rooms/{id}/messages` | send `{body}`; author = caller | Bearer, **participant (else 403)** |
+| `GET /rooms/{id}/messages?limit=&cursor=` | history `{messages, next_cursor}` | Bearer, participant |
+
+History pagination returns an **opaque cursor** (base64url of `created_at\x00id`);
+callers pass `next_cursor` back to fetch the next (older) page. `next_cursor` is
+null on the last page.
+
+### Identity — token-stub (v0)
+
+`Authorization: Bearer <token>` where the token **is** the user's handle; the
+middleware resolves it to a user, creating on first use. No signature, secret, or
+expiry — a deliberate stub, isolated in `internal/httpapi/auth.go`. Real ecosystem
+identity replaces only that file later; handlers receive an already-resolved user.
 
 ## Domain (v0)
 
@@ -33,8 +58,11 @@ offset — stable under concurrent inserts.
 cmd/chater/     wiring only: config → open DB → migrate → serve. No logic.
 internal/
   config/       env-only configuration (12-factor)
-  httpapi/      transport: net/http (stdlib), native /chater/ prefix. Thin handlers.
+  httpapi/      transport: net/http (stdlib), native /chater/ prefix. Thin handlers,
+                token-stub auth, wire DTOs (no DB types leak into JSON).
   store/        data access — sqlc-generated types/queries + a thin wrapper.
+                Constraint violations surface as ErrNotFound/ErrConflict/
+                ErrInvalidReference so handlers map clean 404/409/400.
 migrations/     goose SQL migrations (embedded; applied on startup).
 ```
 
@@ -53,8 +81,9 @@ migrations/     goose SQL migrations (embedded; applied on startup).
 
 ## Non-goals (v0)
 
-Auth providers · attachments · reactions · search · threads. These are the Telegram-parity
-horizon, explicitly out of v0. HTTP room/message handlers land in Step 3, websocket in Step 4.
+Real auth/identity providers · attachments · reactions · search · threads. These are
+the Telegram-parity horizon, explicitly out of v0. Live message delivery over
+**websocket lands in Step 4** (history is HTTP-only for now).
 
 ## Build / CI
 

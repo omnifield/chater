@@ -26,7 +26,7 @@ const (
 	defaultPort = "8080"
 
 	// envDBPath selects the SQLite database file.
-	envDBPath = "CHATER_DB_PATH"
+	envDBPath = "CHATER_DB"
 
 	// defaultDBPath is a local-dev fallback; deployments set CHATER_DB_PATH.
 	defaultDBPath = "chater.db"
