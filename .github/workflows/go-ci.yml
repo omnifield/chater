@@ -46,7 +46,8 @@ jobs:
           go-version-file: go.mod
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          # Pinned for a deterministic gate; matches the v2 .golangci.yml schema.
+          # action v7 is required for golangci-lint v2. Pinned for a
+          # deterministic gate; matches the v2 .golangci.yml schema.
           version: v2.1.6
