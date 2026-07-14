@@ -8,6 +8,11 @@ const backend = process.env.CHATER_BACKEND ?? 'http://localhost:8020';
 export default defineConfig({
   plugins: [solid()],
   server: {
+    // Bind all interfaces (0.0.0.0), not just localhost. Vite defaults to
+    // IPv6 localhost (::1); a devcontainer/WSL port-forward reaches the server
+    // over IPv4 (127.0.0.1), so an ::1-only bind makes the browser hang on an
+    // endless load. host:true makes it reachable over both.
+    host: true,
     // The dev server is viewed through the VS Code port-forward, whose Host is a
     // rotating `*.devtunnels.ms` subdomain — vite's DNS-rebinding host check
     // (403 "This host is not allowed") otherwise blocks both static assets and
