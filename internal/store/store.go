@@ -8,13 +8,47 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/pressly/goose/v3"
+	msqlite "modernc.org/sqlite"
+	sqlitelib "modernc.org/sqlite/lib"
 
 	"github.com/omnifield/chater/migrations"
 )
+
+// Semantic errors at the store boundary — consumers match these with errors.Is
+// instead of depending on database/sql or driver internals.
+var (
+	// ErrNotFound: a looked-up row does not exist.
+	ErrNotFound = errors.New("not found")
+	// ErrConflict: a UNIQUE / PRIMARY KEY constraint was violated
+	// (e.g. duplicate handle or duplicate participant).
+	ErrConflict = errors.New("conflict")
+	// ErrInvalidReference: a FOREIGN KEY constraint was violated
+	// (e.g. a participant/room id that does not exist).
+	ErrInvalidReference = errors.New("invalid reference")
+)
+
+// classifyConstraint maps a driver constraint violation to a semantic error,
+// or nil if err is not a recognised constraint violation. Driver-specific
+// knowledge stays here, behind the store boundary.
+func classifyConstraint(err error) error {
+	var se *msqlite.Error
+	if !errors.As(err, &se) {
+		return nil
+	}
+	switch se.Code() {
+	case sqlitelib.SQLITE_CONSTRAINT_UNIQUE, sqlitelib.SQLITE_CONSTRAINT_PRIMARYKEY:
+		return ErrConflict
+	case sqlitelib.SQLITE_CONSTRAINT_FOREIGNKEY:
+		return ErrInvalidReference
+	default:
+		return nil
+	}
+}
 
 // tsLayout is fixed-width UTC ISO-8601 with microseconds and a literal Z, so
 // timestamps sort lexicographically in the same order as chronologically — the
@@ -26,15 +60,18 @@ func formatTS(t time.Time) string {
 }
 
 // Store wraps the generated Queries with a clock so timestamps stay injectable
-// for tests.
+// for tests. It holds the *sql.DB so it can run multi-statement writes in a
+// transaction.
 type Store struct {
+	db  *sql.DB
 	q   *Queries
 	now func() time.Time
 }
 
-// NewStore builds a Store over any database/sql-compatible handle.
-func NewStore(db DBTX) *Store {
+// NewStore builds a Store over a database/sql handle.
+func NewStore(db *sql.DB) *Store {
 	return &Store{
+		db:  db,
 		q:   New(db),
 		now: func() time.Time { return time.Now().UTC() },
 	}
@@ -60,9 +97,60 @@ func (s *Store) CreateUser(ctx context.Context, handle string) (User, error) {
 		CreatedAt: formatTS(s.now()),
 	})
 	if err != nil {
+		if c := classifyConstraint(err); c != nil {
+			return User{}, c
+		}
 		return User{}, fmt.Errorf("create user: %w", err)
 	}
 	return u, nil
+}
+
+// GetOrCreateUserByHandle resolves a handle to a user, creating it on first
+// use. This backs the token-stub identity: the wrapper hides the get→create
+// (and the create/get race window) from callers.
+func (s *Store) GetOrCreateUserByHandle(ctx context.Context, handle string) (User, error) {
+	u, err := s.q.GetUserByHandle(ctx, handle)
+	if err == nil {
+		return u, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return User{}, fmt.Errorf("get user by handle: %w", err)
+	}
+
+	created, cerr := s.CreateUser(ctx, handle)
+	if cerr == nil {
+		return created, nil
+	}
+	// Lost a create race with a concurrent request for the same handle — the
+	// row now exists, so re-read it.
+	if u, gerr := s.q.GetUserByHandle(ctx, handle); gerr == nil {
+		return u, nil
+	}
+	return User{}, fmt.Errorf("create user for handle: %w", cerr)
+}
+
+// GetRoom returns a room by id, or ErrNotFound.
+func (s *Store) GetRoom(ctx context.Context, id int64) (Room, error) {
+	r, err := s.q.GetRoom(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Room{}, ErrNotFound
+	}
+	if err != nil {
+		return Room{}, fmt.Errorf("get room: %w", err)
+	}
+	return r, nil
+}
+
+// IsParticipant reports whether user is a member of room.
+func (s *Store) IsParticipant(ctx context.Context, roomID, userID int64) (bool, error) {
+	ok, err := s.q.RoomParticipantExists(ctx, RoomParticipantExistsParams{
+		RoomID: roomID,
+		UserID: userID,
+	})
+	if err != nil {
+		return false, fmt.Errorf("check participant: %w", err)
+	}
+	return ok, nil
 }
 
 // CreateRoom inserts a room. roomType is "dialog" or "group"; title may be nil.
@@ -78,6 +166,57 @@ func (s *Store) CreateRoom(ctx context.Context, roomType string, title *string) 
 	return r, nil
 }
 
+// CreateRoomWithParticipants creates a room and its participants atomically:
+// the creator (role "owner") plus any participantIDs (deduped, creator skipped).
+// All writes share one transaction, so a bad participant rolls the room back.
+func (s *Store) CreateRoomWithParticipants(ctx context.Context, roomType string, title *string, creatorID int64, participantIDs []int64) (Room, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Room{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }() // no-op after a successful commit
+
+	qtx := s.q.WithTx(tx)
+	ts := formatTS(s.now())
+
+	room, err := qtx.CreateRoom(ctx, CreateRoomParams{
+		Type:      roomType,
+		Title:     nullString(title),
+		CreatedAt: ts,
+	})
+	if err != nil {
+		return Room{}, fmt.Errorf("create room: %w", err)
+	}
+
+	owner := "owner"
+	if err := qtx.AddParticipant(ctx, AddParticipantParams{
+		RoomID: room.ID, UserID: creatorID, Role: nullString(&owner), JoinedAt: ts,
+	}); err != nil {
+		return Room{}, fmt.Errorf("add creator: %w", err)
+	}
+
+	seen := map[int64]bool{creatorID: true}
+	for _, pid := range participantIDs {
+		if seen[pid] {
+			continue
+		}
+		seen[pid] = true
+		if err := qtx.AddParticipant(ctx, AddParticipantParams{
+			RoomID: room.ID, UserID: pid, Role: sql.NullString{}, JoinedAt: ts,
+		}); err != nil {
+			if c := classifyConstraint(err); c != nil {
+				return Room{}, c
+			}
+			return Room{}, fmt.Errorf("add participant %d: %w", pid, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return Room{}, fmt.Errorf("commit: %w", err)
+	}
+	return room, nil
+}
+
 // AddParticipant adds a user to a room; role may be nil.
 func (s *Store) AddParticipant(ctx context.Context, roomID, userID int64, role *string) error {
 	if err := s.q.AddParticipant(ctx, AddParticipantParams{
@@ -86,6 +225,9 @@ func (s *Store) AddParticipant(ctx context.Context, roomID, userID int64, role *
 		Role:     nullString(role),
 		JoinedAt: formatTS(s.now()),
 	}); err != nil {
+		if c := classifyConstraint(err); c != nil {
+			return c
+		}
 		return fmt.Errorf("add participant: %w", err)
 	}
 	return nil

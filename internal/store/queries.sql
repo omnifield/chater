@@ -3,6 +3,17 @@ INSERT INTO users (handle, created_at)
 VALUES (?, ?)
 RETURNING id, handle, created_at;
 
+-- name: GetUserByHandle :one
+SELECT id, handle, created_at FROM users WHERE handle = ?;
+
+-- name: GetRoom :one
+SELECT id, type, title, created_at FROM rooms WHERE id = ?;
+
+-- name: RoomParticipantExists :one
+SELECT EXISTS(
+    SELECT 1 FROM room_participants WHERE room_id = ? AND user_id = ?
+) AS present;
+
 -- name: CreateRoom :one
 INSERT INTO rooms (type, title, created_at)
 VALUES (?, ?, ?)

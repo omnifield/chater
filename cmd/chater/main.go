@@ -57,9 +57,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	}
 	logger.Info("migrations applied", "db", cfg.DBPath)
 
+	st := store.NewStore(db)
+
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           httpapi.NewRouter(logger),
+		Handler:           httpapi.NewRouter(logger, st),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
