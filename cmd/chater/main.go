@@ -18,6 +18,7 @@ import (
 
 	"github.com/omnifield/chater/internal/config"
 	"github.com/omnifield/chater/internal/httpapi"
+	"github.com/omnifield/chater/internal/store"
 )
 
 func main() {
@@ -37,6 +38,24 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
+
+	// Open the database and apply migrations on startup (idempotent goose up).
+	// Rationale: dev-first, one moving part — the service is always schema-ready
+	// without an out-of-band migrate step. A standalone `migrate` command can be
+	// added later if prod ops want migrations gated separately from rollout.
+	db, err := store.Open(cfg.DBPath)
+	if err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+	defer func() {
+		if cerr := db.Close(); cerr != nil {
+			logger.Warn("closing database", "err", cerr)
+		}
+	}()
+	if err := store.Migrate(ctx, db); err != nil {
+		return fmt.Errorf("apply migrations: %w", err)
+	}
+	logger.Info("migrations applied", "db", cfg.DBPath)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

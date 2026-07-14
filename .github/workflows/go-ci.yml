@@ -1,8 +1,14 @@
-# in-repo Go CI gate — build / vet / test -race / golangci-lint.
+# in-repo Go CI gate — build / vet / test -race / golangci-lint / sqlc-drift.
 #
 # NOTE: temporary. This gate migrates to the reusable devopser go-ci
 # (hooksPath + reusable workflow) once it ships — precedent: weber. Keep it lean
 # and canon-shaped so the swap is a delete-and-call, not a rewrite.
+#
+# tools (pins; runtime deps pinned in go.mod):
+#   sqlc          v1.31.1   (code generator)
+#   golangci-lint v2.1.6    (lint job below)
+#   goose         v3.27.2   (go.mod — used as a library, no CLI)
+#   modernc.org/sqlite v1.53.0 (go.mod — pure-Go driver)
 name: go-ci
 
 on:
@@ -25,6 +31,13 @@ jobs:
           # Honour the go.mod toolchain pin instead of a hardcoded version.
           go-version-file: go.mod
           check-latest: false
+
+      - name: Verify sqlc generation is in sync
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+          sqlc generate
+          git diff --exit-code -- internal/store \
+            || { echo "::error::sqlc-generated code is stale — run 'sqlc generate' and commit"; exit 1; }
 
       - name: Build
         run: go build ./...
