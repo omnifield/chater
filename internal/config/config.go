@@ -12,6 +12,8 @@ import (
 type Config struct {
 	// Addr is the TCP bind address for the HTTP server, as host:port.
 	Addr string
+	// DBPath is the SQLite database file path (":memory:" for ephemeral).
+	DBPath string
 }
 
 const (
@@ -22,6 +24,12 @@ const (
 	// reserved in devopser registry/ports.md) is injected via CHATER_PORT at
 	// deploy time — no deployment port is hardcoded in the binary.
 	defaultPort = "8080"
+
+	// envDBPath selects the SQLite database file.
+	envDBPath = "CHATER_DB_PATH"
+
+	// defaultDBPath is a local-dev fallback; deployments set CHATER_DB_PATH.
+	defaultDBPath = "chater.db"
 )
 
 // Load reads configuration from the environment. It returns an error type for
@@ -32,5 +40,13 @@ func Load() (Config, error) {
 		port = defaultPort
 	}
 
-	return Config{Addr: net.JoinHostPort("", port)}, nil
+	dbPath := os.Getenv(envDBPath)
+	if dbPath == "" {
+		dbPath = defaultDBPath
+	}
+
+	return Config{
+		Addr:   net.JoinHostPort("", port),
+		DBPath: dbPath,
+	}, nil
 }

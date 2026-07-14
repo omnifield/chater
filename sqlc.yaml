@@ -1,0 +1,18 @@
+# sqlc: types & query methods generated from the SQL schema (canon:
+# types-from-schema, no hand-written row->struct mapping).
+# Pinned tool version lives in the go-ci workflow (`tools` note) so the gate is
+# deterministic. NOTE: like go-ci, tool pins migrate to the reusable devopser
+# skeleton later (precedent: weber).
+version: "2"
+sql:
+  - engine: "sqlite"
+    # Schema is read straight from the goose migrations — sqlc understands the
+    # goose annotations and parses only the Up statements. One source of truth.
+    schema: "migrations"
+    queries: "internal/store/queries.sql"
+    gen:
+      go:
+        package: "store"
+        out: "internal/store"
+        emit_empty_slices: true
+        emit_interface: false

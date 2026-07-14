@@ -1,2 +1,0 @@
-# Canon layout placeholder. goose migrations land in Step 2 (schema + migrations).
-# Kept so the cmd/ + internal/ + migrations/ canon shape exists from Step 1.
