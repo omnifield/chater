@@ -133,3 +133,23 @@ body {
   color: #c33;
   font-size: 0.85rem;
 }
+
+.err button {
+  margin-top: 0.4rem;
+}
+
+.loading {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.app-error {
+  max-width: 30rem;
+  margin: 3rem auto;
+  text-align: center;
+  color: #c33;
+}
+
+.app-error button {
+  margin-top: 0.75rem;
+}

@@ -1,4 +1,4 @@
-import { createResource, createSignal, For, Show } from 'solid-js';
+import { createResource, createSignal, ErrorBoundary, For, Show, Suspense } from 'solid-js';
 import type { ChatApi } from '../api/client';
 import type { RoomType } from '../api/types';
 import { errorText, roomLabel } from '../format';
@@ -30,28 +30,10 @@ export function Rooms(props: {
   return (
     <aside class="rooms">
       <h2>Rooms</h2>
-      {/* When the resource errors, reading rooms() rethrows — so guard the list
-          behind the error check and never read the value on the error branch. */}
-      <Show
-        when={!rooms.error}
-        fallback={<p class="err">Could not load rooms: {errorText(rooms.error)}</p>}
-      >
-        <ul>
-          <For each={rooms() ?? []}>
-            {(r) => (
-              <li>
-                <button
-                  type="button"
-                  classList={{ active: r.id === props.selectedId }}
-                  onClick={() => props.onSelect(r.id)}
-                >
-                  {roomLabel(r)}
-                </button>
-              </li>
-            )}
-          </For>
-        </ul>
-      </Show>
+
+      {/* The create form is mounted UNCONDITIONALLY, above the list, so it stays
+          interactive no matter how the rooms-list load turns out. It never lives
+          inside the list's Suspense/ErrorBoundary subtree. */}
       <form class="create-room" onSubmit={create}>
         <select value={type()} onChange={(e) => setType(e.currentTarget.value as RoomType)}>
           <option value="group">group</option>
@@ -67,6 +49,45 @@ export function Rooms(props: {
       <Show when={error()}>
         <p class="err">{error()}</p>
       </Show>
+
+      {/* The list reads rooms(), which throws while pending (-> Suspense) and on
+          error (-> ErrorBoundary). Both boundaries CONTAIN the throw so it can
+          never propagate to the root and tear down the app. Retry recovers from
+          a transient first failure. */}
+      <ErrorBoundary
+        fallback={(err, reset) => (
+          <div class="err">
+            <p>Could not load rooms: {errorText(err)}</p>
+            <button
+              type="button"
+              onClick={() => {
+                void refetch();
+                reset();
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+      >
+        <Suspense fallback={<p class="loading">Loading rooms…</p>}>
+          <ul>
+            <For each={rooms()}>
+              {(r) => (
+                <li>
+                  <button
+                    type="button"
+                    classList={{ active: r.id === props.selectedId }}
+                    onClick={() => props.onSelect(r.id)}
+                  >
+                    {roomLabel(r)}
+                  </button>
+                </li>
+              )}
+            </For>
+          </ul>
+        </Suspense>
+      </ErrorBoundary>
     </aside>
   );
 }
