@@ -4,6 +4,13 @@
 .DS_Store
 *.swp
 
+# pnpm content-addressable store (lands at repo root in this container; a cache,
+# never committed)
+.pnpm-store/
+
+# node
+node_modules/
+
 # --- Go block ---
 # Binaries
 /chater
