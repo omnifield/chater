@@ -1,0 +1,13 @@
+# golangci-lint config (schema v2). The CI workflow pins the linter version so
+# this schema stays valid; NOTE: this whole gate migrates to the reusable
+# devopser go-ci (precedent: weber) — keep config minimal to ease that move.
+version: "2"
+
+linters:
+  default: standard # govet, errcheck, staticcheck, ineffassign, unused
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused

@@ -1,0 +1,58 @@
+# in-repo Go CI gate — build / vet / test -race / golangci-lint.
+#
+# NOTE: temporary. This gate migrates to the reusable devopser go-ci
+# (hooksPath + reusable workflow) once it ships — precedent: weber. Keep it lean
+# and canon-shaped so the swap is a delete-and-call, not a rewrite.
+name: go-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          # Honour the go.mod toolchain pin instead of a hardcoded version.
+          go-version-file: go.mod
+          check-latest: false
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (race)
+        run: go test -race ./...
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          # action v7 is required for golangci-lint v2. Pinned for a
+          # deterministic gate; matches the v2 .golangci.yml schema.
+          version: v2.1.6
+          # Build from source with the setup-go toolchain (1.26 from go.mod)
+          # instead of the prebuilt binary, which is built with go1.24 and
+          # refuses a go.mod that targets a newer Go ("language version ...
+          # lower than the targeted Go version").
+          install-mode: goinstall

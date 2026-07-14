@@ -1,0 +1,10 @@
+# Repo-agnostic base — will be superseded by the devopser skeleton.
+* text=auto eol=lf
+
+*.go text
+go.mod text
+go.sum text
+
+*.png binary
+*.jpg binary
+*.gif binary
