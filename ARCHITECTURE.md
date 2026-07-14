@@ -1,6 +1,8 @@
 # Architecture — chater
 
-North-star for the chater backend. Kept short; updated as the product grows.
+North-star for chater. Kept short; updated as the product grows. The **backend**
+(Go) owns the product; a thin **web** UI (`web/`, Vite + Solid) dogfoods it over the
+public API — see `web/README.md`.
 
 ## What chater is
 

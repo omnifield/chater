@@ -1,0 +1,135 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.login {
+  max-width: 24rem;
+  margin: 4rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #8884;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  height: calc(100vh - 3rem);
+}
+
+.rooms {
+  border-right: 1px solid #8884;
+  padding: 0.75rem;
+  overflow-y: auto;
+}
+
+.rooms ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.rooms li button {
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rooms li button.active {
+  border-color: #6a9;
+  font-weight: 600;
+}
+
+.create-room {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.room {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  overflow: hidden;
+}
+
+.room.empty {
+  align-items: center;
+  justify-content: center;
+  color: #888;
+}
+
+.room header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.room .status {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.messages {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.messages li {
+  padding: 0.25rem 0;
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.messages .author {
+  color: #6a9;
+}
+
+.messages time {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.send,
+.add-participant {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.send input,
+.add-participant input {
+  flex: 1;
+}
+
+.err {
+  color: #c33;
+  font-size: 0.85rem;
+}
