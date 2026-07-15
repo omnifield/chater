@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "name": "backend",
+    "cwd": ".",
+    "command": "env CHATER_PORT=8020 CHATER_DB=/home/vscode/.local/state/chater/chater.db go run ./cmd/chater",
+    "port": 8020,
+    "healthUrl": "http://localhost:8020/chater/healthz"
+  }
+]

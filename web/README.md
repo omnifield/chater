@@ -31,8 +31,10 @@ Components depend on the `ChatApi` interface, never on `fetch`/`WebSocket` direc
 Backend and frontend both live in this container.
 
 ```sh
-# 1) backend on the reserved chater port, with a dev DB
-(cd .. && CHATER_PORT=8020 CHATER_DB=./chater-dev.db go run ./cmd/chater)
+# 1) backend — declared in devbox.services.json (port 8020, DB on the
+#    chater-data volume). Autostarts on devbox up; manage it explicitly with:
+node scripts/devbox-services.mjs up        # start (idempotent); status / stop likewise
+#    Do not `go run ./cmd/chater` by hand — the orchestrator owns its lifecycle.
 
 # 2) frontend
 pnpm install
