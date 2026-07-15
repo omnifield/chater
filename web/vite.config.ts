@@ -8,6 +8,10 @@ const backend = process.env.CHATER_BACKEND ?? 'http://localhost:8020';
 export default defineConfig({
   plugins: [solid()],
   server: {
+    // Pin the port: the gateway route in omnifield.yaml (/chater → 5173) must equal
+    // the REAL listening port. Vite's default is 5173, but leaving it implicit lets
+    // the declared route silently drift; pinning keeps manifest == reality.
+    port: 5173,
     // Bind all interfaces (0.0.0.0), not just localhost. Vite defaults to
     // IPv6 localhost (::1); a devcontainer/WSL port-forward reaches the server
     // over IPv4 (127.0.0.1), so an ::1-only bind makes the browser hang on an
