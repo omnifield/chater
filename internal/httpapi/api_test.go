@@ -186,6 +186,10 @@ func TestPostMessageAuthorization(t *testing.T) {
 	if msg.Body != "hello" || msg.RoomID != room.ID {
 		t.Fatalf("unexpected message: %+v", msg)
 	}
+	// The author handle (caller) is included, not just the numeric id.
+	if msg.AuthorHandle != "alice" {
+		t.Fatalf("AuthorHandle = %q, want %q", msg.AuthorHandle, "alice")
+	}
 
 	// Non-participant is forbidden (the 403 enforcement the brief calls out).
 	if rec := do(t, router, http.MethodPost, base, "mallory", `{"body":"intrude"}`); rec.Code != http.StatusForbidden {
@@ -234,6 +238,9 @@ func TestMessageHistoryPaginationOverHTTP(t *testing.T) {
 		pages++
 		for _, m := range page.Messages {
 			bodies = append(bodies, m.Body)
+			if m.AuthorHandle != "alice" {
+				t.Fatalf("history message AuthorHandle = %q, want %q", m.AuthorHandle, "alice")
+			}
 		}
 		if page.NextCursor == nil {
 			break

@@ -133,15 +133,16 @@ func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (M
 }
 
 const listMessagesByRoom = `-- name: ListMessagesByRoom :many
-SELECT id, room_id, author_id, body, created_at
-FROM messages
-WHERE room_id = ?1
+SELECT m.id, m.room_id, m.author_id, m.body, m.created_at, u.handle AS author_handle
+FROM messages m
+JOIN users u ON u.id = m.author_id
+WHERE m.room_id = ?1
   AND (
       ?2 = ''
-      OR created_at < ?2
-      OR (created_at = ?2 AND id < ?3)
+      OR m.created_at < ?2
+      OR (m.created_at = ?2 AND m.id < ?3)
   )
-ORDER BY created_at DESC, id DESC
+ORDER BY m.created_at DESC, m.id DESC
 LIMIT ?4
 `
 
@@ -152,12 +153,21 @@ type ListMessagesByRoomParams struct {
 	PageLimit       int64
 }
 
+type ListMessagesByRoomRow struct {
+	ID           int64
+	RoomID       int64
+	AuthorID     int64
+	Body         string
+	CreatedAt    string
+	AuthorHandle string
+}
+
 // ListMessagesByRoom returns one page of history, newest first.
 // Keyset pagination over (created_at, id): pass the last row seen as the cursor
 // to fetch the next (older) page. First page: cursor_created_at = ” (sentinel),
 // which disables the bound. The cursor param names repeat, so sqlc collapses
 // each to a single argument.
-func (q *Queries) ListMessagesByRoom(ctx context.Context, arg ListMessagesByRoomParams) ([]Message, error) {
+func (q *Queries) ListMessagesByRoom(ctx context.Context, arg ListMessagesByRoomParams) ([]ListMessagesByRoomRow, error) {
 	rows, err := q.db.QueryContext(ctx, listMessagesByRoom,
 		arg.RoomID,
 		arg.CursorCreatedAt,
@@ -168,15 +178,16 @@ func (q *Queries) ListMessagesByRoom(ctx context.Context, arg ListMessagesByRoom
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Message{}
+	items := []ListMessagesByRoomRow{}
 	for rows.Next() {
-		var i Message
+		var i ListMessagesByRoomRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.RoomID,
 			&i.AuthorID,
 			&i.Body,
 			&i.CreatedAt,
+			&i.AuthorHandle,
 		); err != nil {
 			return nil, err
 		}

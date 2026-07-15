@@ -38,6 +38,30 @@ describe('RoomView', () => {
     expect(await screen.findByText('hello')).toBeInTheDocument();
   });
 
+  it('shows the author handle, falling back to #id when absent', async () => {
+    const api = stubApi({
+      getMessages: async () => ({
+        messages: [
+          {
+            id: 1,
+            room_id: 3,
+            author_id: 2,
+            author_handle: 'alice',
+            body: 'named',
+            created_at: 'x',
+          },
+          { id: 2, room_id: 3, author_id: 9, body: 'legacy', created_at: 'y' },
+        ],
+        next_cursor: null,
+      }),
+    });
+
+    render(() => <RoomView api={api} roomId={3} />);
+
+    expect(await screen.findByText('alice')).toBeInTheDocument();
+    expect(await screen.findByText('#9')).toBeInTheDocument(); // fallback for old payload
+  });
+
   it('appends live messages from the socket', async () => {
     let push: ((m: Message) => void) | undefined;
     const api = stubApi({

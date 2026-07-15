@@ -19,6 +19,9 @@ export interface Message {
   id: number;
   room_id: number;
   author_id: number;
+  // author_handle is optional for backward-compat: older payloads may omit it,
+  // in which case the UI falls back to the numeric id.
+  author_handle?: string;
   body: string;
   created_at: string;
 }

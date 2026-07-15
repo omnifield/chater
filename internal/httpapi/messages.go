@@ -47,16 +47,19 @@ func (s *Server) postMessage(w http.ResponseWriter, r *http.Request, caller stor
 		return
 	}
 
+	// The author is the caller, so its handle is already known — no extra lookup.
+	authorHandle := caller.Handle
+
 	// Fan the persisted message out to live websocket subscribers. This must not
 	// block or fail the HTTP path: marshal once, publish non-blockingly (the hub
 	// drops frames for slow subscribers).
-	if payload, merr := json.Marshal(messageEvent(msg)); merr != nil {
+	if payload, merr := json.Marshal(messageEvent(msg, authorHandle)); merr != nil {
 		s.logger.ErrorContext(r.Context(), "marshal ws event", "err", merr)
 	} else {
 		s.hub.publish(roomID, payload)
 	}
 
-	writeJSON(w, s.logger, http.StatusCreated, toMessage(msg))
+	writeJSON(w, s.logger, http.StatusCreated, toMessage(msg, authorHandle))
 }
 
 type messagesResponse struct {
@@ -102,7 +105,7 @@ func (s *Server) getMessages(w http.ResponseWriter, r *http.Request, caller stor
 
 	out := messagesResponse{Messages: make([]messageResponse, 0, len(msgs))}
 	for _, m := range msgs {
-		out.Messages = append(out.Messages, toMessage(m))
+		out.Messages = append(out.Messages, toMessage(m.Message, m.AuthorHandle))
 	}
 	// A full page implies there may be more; hand back a cursor to continue.
 	if len(msgs) == int(limit) {

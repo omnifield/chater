@@ -32,20 +32,22 @@ func toRoom(r store.Room) roomResponse {
 }
 
 type messageResponse struct {
-	ID        int64  `json:"id"`
-	RoomID    int64  `json:"room_id"`
-	AuthorID  int64  `json:"author_id"`
-	Body      string `json:"body"`
-	CreatedAt string `json:"created_at"`
+	ID           int64  `json:"id"`
+	RoomID       int64  `json:"room_id"`
+	AuthorID     int64  `json:"author_id"`
+	AuthorHandle string `json:"author_handle"`
+	Body         string `json:"body"`
+	CreatedAt    string `json:"created_at"`
 }
 
-func toMessage(m store.Message) messageResponse {
+func toMessage(m store.Message, authorHandle string) messageResponse {
 	return messageResponse{
-		ID:        m.ID,
-		RoomID:    m.RoomID,
-		AuthorID:  m.AuthorID,
-		Body:      m.Body,
-		CreatedAt: m.CreatedAt,
+		ID:           m.ID,
+		RoomID:       m.RoomID,
+		AuthorID:     m.AuthorID,
+		AuthorHandle: authorHandle,
+		Body:         m.Body,
+		CreatedAt:    m.CreatedAt,
 	}
 }
 
@@ -57,7 +59,7 @@ type wsEvent struct {
 	Message *messageResponse `json:"message,omitempty"`
 }
 
-func messageEvent(m store.Message) wsEvent {
-	dto := toMessage(m)
+func messageEvent(m store.Message, authorHandle string) wsEvent {
+	dto := toMessage(m, authorHandle)
 	return wsEvent{Type: "message", Message: &dto}
 }
