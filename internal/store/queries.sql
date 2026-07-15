@@ -34,15 +34,16 @@ RETURNING id, room_id, author_id, body, created_at;
 -- which disables the bound. The cursor param names repeat, so sqlc collapses
 -- each to a single argument.
 -- name: ListMessagesByRoom :many
-SELECT id, room_id, author_id, body, created_at
-FROM messages
-WHERE room_id = @room_id
+SELECT m.id, m.room_id, m.author_id, m.body, m.created_at, u.handle AS author_handle
+FROM messages m
+JOIN users u ON u.id = m.author_id
+WHERE m.room_id = @room_id
   AND (
       @cursor_created_at = ''
-      OR created_at < @cursor_created_at
-      OR (created_at = @cursor_created_at AND id < @cursor_id)
+      OR m.created_at < @cursor_created_at
+      OR (m.created_at = @cursor_created_at AND m.id < @cursor_id)
   )
-ORDER BY created_at DESC, id DESC
+ORDER BY m.created_at DESC, m.id DESC
 LIMIT @page_limit;
 
 -- ListRoomsForUser lists every room the user participates in, newest first.

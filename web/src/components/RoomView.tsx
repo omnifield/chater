@@ -107,7 +107,7 @@ export function RoomView(props: { api: ChatApi; roomId: number }) {
         <For each={messages()}>
           {(m) => (
             <li>
-              <b class="author">#{m.author_id}</b>
+              <b class="author">{m.author_handle ?? `#${m.author_id}`}</b>
               <span class="body">{m.body}</span>
               <time>{m.created_at.slice(11, 19)}</time>
             </li>

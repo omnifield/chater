@@ -254,10 +254,17 @@ type Cursor struct {
 	ID        int64
 }
 
-// ListMessagesByRoom returns up to limit messages newest-first. Pass nil cursor
-// for the first page, then the cursor built from the last returned message to
-// page backwards through older history.
-func (s *Store) ListMessagesByRoom(ctx context.Context, roomID int64, cursor *Cursor, limit int32) ([]Message, error) {
+// MessageWithAuthor is a message plus its author's handle (joined from users),
+// so callers can show a readable name without a second lookup.
+type MessageWithAuthor struct {
+	Message
+	AuthorHandle string
+}
+
+// ListMessagesByRoom returns up to limit messages newest-first, each with its
+// author's handle. Pass nil cursor for the first page, then the cursor built
+// from the last returned message to page backwards through older history.
+func (s *Store) ListMessagesByRoom(ctx context.Context, roomID int64, cursor *Cursor, limit int32) ([]MessageWithAuthor, error) {
 	params := ListMessagesByRoomParams{
 		RoomID:          roomID,
 		CursorCreatedAt: "", // sentinel: no upper bound -> first page
@@ -268,11 +275,24 @@ func (s *Store) ListMessagesByRoom(ctx context.Context, roomID int64, cursor *Cu
 		params.CursorCreatedAt = cursor.CreatedAt
 		params.CursorID = cursor.ID
 	}
-	msgs, err := s.q.ListMessagesByRoom(ctx, params)
+	rows, err := s.q.ListMessagesByRoom(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("list messages: %w", err)
 	}
-	return msgs, nil
+	out := make([]MessageWithAuthor, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, MessageWithAuthor{
+			Message: Message{
+				ID:        r.ID,
+				RoomID:    r.RoomID,
+				AuthorID:  r.AuthorID,
+				Body:      r.Body,
+				CreatedAt: r.CreatedAt,
+			},
+			AuthorHandle: r.AuthorHandle,
+		})
+	}
+	return out, nil
 }
 
 // ListRoomsForUser lists every room the user participates in, newest first.

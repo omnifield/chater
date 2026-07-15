@@ -249,6 +249,9 @@ func TestMessageHistoryKeysetTiebreak(t *testing.T) {
 	if err != nil || len(page1) != 1 || page1[0].Body != "second" {
 		t.Fatalf("page1 = %+v (err=%v), want [second]", page1, err)
 	}
+	if page1[0].AuthorHandle != "author" {
+		t.Fatalf("AuthorHandle = %q, want %q", page1[0].AuthorHandle, "author")
+	}
 	cursor := &Cursor{CreatedAt: page1[0].CreatedAt, ID: page1[0].ID}
 	page2, err := s.ListMessagesByRoom(ctx, room.ID, cursor, 1)
 	if err != nil || len(page2) != 1 || page2[0].Body != "first" {

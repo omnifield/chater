@@ -27,7 +27,7 @@ type Store interface {
 	AddParticipant(ctx context.Context, roomID, userID int64, role *string) error
 	IsParticipant(ctx context.Context, roomID, userID int64) (bool, error)
 	InsertMessage(ctx context.Context, roomID, authorID int64, body string) (store.Message, error)
-	ListMessagesByRoom(ctx context.Context, roomID int64, cursor *store.Cursor, limit int32) ([]store.Message, error)
+	ListMessagesByRoom(ctx context.Context, roomID int64, cursor *store.Cursor, limit int32) ([]store.MessageWithAuthor, error)
 }
 
 // Server holds handler dependencies.
