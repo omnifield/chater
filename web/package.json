@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "description": "chater minimal chat UI (Vite + Solid) over the live chater API",
+  "packageManager": "pnpm@10.11.0",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
