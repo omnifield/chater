@@ -1,0 +1,14 @@
+apiVersion: omnifield.dev/v1
+name: chater
+type: fullstack
+title: Chater
+description: Чат поверх live chater API
+reach:
+  routes:
+    # Фронт (vite) — реальный listening-порт web/vite.config.ts (server.port: 5173).
+    - path: /chater
+      port: 5173
+    # Backend (Go) — контрактный порт registry/ports.md (нативный префикс /chater/;
+    # rewrite /api/chater → chater:8020/chater/ — зона hub-core, Шаг 5.3).
+    - path: /api/chater
+      port: 8020
