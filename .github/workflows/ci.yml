@@ -7,7 +7,7 @@ concurrency:
   cancel-in-progress: true
 # Reusable не расширяет права сам — явный permissions обнуляет неперечисленное
 # (объём — по канону каждого reusable: go → contents:read; node → +actions,+packages).
-permissions: { contents: read }
+permissions: { contents: read, packages: read }
 jobs:
   go:
     uses: omnifield/devopser/.github/workflows/go-ci.yml@main

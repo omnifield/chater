@@ -106,16 +106,16 @@ export class ApiClient implements ChatApi {
   }
 
   async listRooms(): Promise<Room[]> {
-    const data = await this.request<RoomsResponse>('GET', '/chater/rooms');
+    const data = await this.request<RoomsResponse>('GET', '/api/chater/rooms');
     return data.rooms;
   }
 
   createRoom(type: RoomType, title?: string): Promise<Room> {
-    return this.request<Room>('POST', '/chater/rooms', { type, title: title ?? null });
+    return this.request<Room>('POST', '/api/chater/rooms', { type, title: title ?? null });
   }
 
   addParticipant(roomId: number, userId: number, role?: string): Promise<void> {
-    return this.request<void>('POST', `/chater/rooms/${roomId}/participants`, {
+    return this.request<void>('POST', `/api/chater/rooms/${roomId}/participants`, {
       user_id: userId,
       role: role ?? null,
     });
@@ -126,12 +126,12 @@ export class ApiClient implements ChatApi {
     if (opts?.limit) params.set('limit', String(opts.limit));
     if (opts?.cursor) params.set('cursor', opts.cursor);
     const qs = params.toString();
-    const path = `/chater/rooms/${roomId}/messages${qs ? `?${qs}` : ''}`;
+    const path = `/api/chater/rooms/${roomId}/messages${qs ? `?${qs}` : ''}`;
     return this.request<MessagesPage>('GET', path);
   }
 
   sendMessage(roomId: number, body: string): Promise<Message> {
-    return this.request<Message>('POST', `/chater/rooms/${roomId}/messages`, { body });
+    return this.request<Message>('POST', `/api/chater/rooms/${roomId}/messages`, { body });
   }
 
   private wsUrl(roomId: number): string {
@@ -148,7 +148,7 @@ export class ApiClient implements ChatApi {
     }
     // Token travels as a query param: the browser can't set an Authorization
     // header on a WebSocket, so the dev vite proxy moves ?token= into the header.
-    return `${proto}//${host}/chater/rooms/${roomId}/ws?token=${encodeURIComponent(token)}`;
+    return `${proto}//${host}/api/chater/rooms/${roomId}/ws?token=${encodeURIComponent(token)}`;
   }
 
   openRoomSocket(roomId: number, handlers: RoomSocketHandlers): RoomSubscription {
