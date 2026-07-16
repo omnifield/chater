@@ -48,7 +48,7 @@ describe('ApiClient HTTP', () => {
 
     expect(room.id).toBe(5);
     const [url, init] = fetchImpl.mock.calls[0] ?? [];
-    expect(url).toContain('/chater/rooms');
+    expect(url).toContain('/api/chater/rooms');
     expect(JSON.parse(init?.body as string)).toEqual({ type: 'group', title: null });
   });
 
@@ -80,7 +80,7 @@ describe('ApiClient HTTP', () => {
     await api.getMessages(3, { limit: 2, cursor: 'abc' });
 
     const url = fetchImpl.mock.calls[0]?.[0];
-    expect(url).toContain('/chater/rooms/3/messages?limit=2&cursor=abc');
+    expect(url).toContain('/api/chater/rooms/3/messages?limit=2&cursor=abc');
   });
 
   it('wraps network failures as ApiError(0)', async () => {
@@ -127,7 +127,7 @@ describe('ApiClient websocket', () => {
     });
 
     const socket = FakeSocket.last;
-    expect(socket?.url).toContain('/chater/rooms/7/ws?token=alice');
+    expect(socket?.url).toContain('/api/chater/rooms/7/ws?token=alice');
 
     socket?.onopen?.();
     expect(status).toBe('open');
