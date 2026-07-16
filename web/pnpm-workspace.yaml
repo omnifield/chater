@@ -1,7 +1,7 @@
 # Allow esbuild (vite's bundler) to run its postinstall so its native binary is
 # fetched. Without this pnpm 10+ silently skips the build script and vite fails.
-allowBuilds:
-  esbuild: true
+onlyBuiltDependencies:
+  - esbuild
 
 # Pin a single vite version across the tree. vitest 2.x bundles vite 5, while
 # some plugins float to vite 6; two copies produce incompatible Plugin types in
